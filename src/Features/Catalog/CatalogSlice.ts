@@ -6,41 +6,50 @@ import {
 import agent from "../../ApiMiddleWare/Agent";
 import { Product, ProductParams } from "../../Models/product";
 import { RootState } from "../../Store/ConfigureStore";
+import { MetaData } from "../../Models/pagination";
 
-interface CatalogState{
-  productsLoaded:boolean;
-  filtersLoaded:boolean;
-  status:string;
-  brands:string[];
-  types:string[];
-  productParams:ProductParams
+interface CatalogState {
+  productsLoaded: boolean;
+  filtersLoaded: boolean;
+  status: string;
+  brands: string[];
+  types: string[];
+  productParams: ProductParams;
+  metaData: MetaData | null;
 }
 
 const productAdapter = createEntityAdapter<Product>();
 
-function getAxiosParams(productParams:ProductParams){
+function getAxiosParams(productParams: ProductParams) {
   const params = new URLSearchParams();
-  params.append('pageNumber',productParams.pageNumber.toString())
-  params.append('pageSize',productParams.pageSize.toString())
-  params.append('orderBy',productParams.orderBy.toString())
-  if (productParams.searchTerm) params.append('searchTerm',productParams.searchTerm)
-  if (productParams.brands) params.append('brands',productParams.brands.toString())
-  if (productParams.types) params.append('types',productParams.types.toString())
- 
-  return params
+  params.append("pageNumber", productParams.pageNumber.toString());
+  params.append("pageSize", productParams.pageSize.toString());
+  params.append("orderBy", productParams.orderBy.toString());
+  if (productParams.searchTerm)
+    params.append("searchTerm", productParams.searchTerm);
+  if (productParams.brands.length>0)
+    params.append("brands", productParams.brands.toString());
+  if (productParams.types.length>0)
+    params.append("types", productParams.types.toString());
+
+  return params;
 }
 
-export const fetchProductsAsync = createAsyncThunk<Product[],void,{state:RootState}>(
-  "catalog/fetchProductsAsync",
-  async (_, thunkApi) => {
-    const params = getAxiosParams(thunkApi.getState().catalog.productParams)
-    try {
-      return await agent.Catalog.list(params);
-    } catch (error: any) {
-      return thunkApi.rejectWithValue({ error: error.data });
-    }
+export const fetchProductsAsync = createAsyncThunk<
+  Product[],
+  void,
+  { state: RootState }
+>("catalog/fetchProductsAsync", async (_, thunkApi) => {
+  const params = getAxiosParams(thunkApi.getState().catalog.productParams);
+  try {
+    const response = await agent.Catalog.list(params);
+    thunkApi.dispatch(setMetaData(response.metaData));
+   
+    return response.items;
+  } catch (error: any) {
+    return thunkApi.rejectWithValue({ error: error.data });
   }
-);
+});
 
 export const fetchProductAsync = createAsyncThunk<Product, number>(
   "catalog/fetchProductAsync",
@@ -54,21 +63,23 @@ export const fetchProductAsync = createAsyncThunk<Product, number>(
 );
 
 export const fetchFilters = createAsyncThunk(
-  'catalog/fetchFilters',
-  async(_,thunkAPI)=>{
+  "catalog/fetchFilters",
+  async (_, thunkAPI) => {
     try {
-      return agent.Catalog.fetchFilters()
-    } catch (error:any) {
-      return thunkAPI.rejectWithValue({error:error.data})
-    } 
+      return agent.Catalog.fetchFilters();
+    } catch (error: any) {
+      return thunkAPI.rejectWithValue({ error: error.data });
+    }
   }
-)
+);
 
-function initParams(){
-  return{
-    pageNumber:1,
-    pageSize:6,
-    orderBy:'name'
+function initParams(): ProductParams {
+  return {
+      pageNumber: 1,
+      pageSize: 6,
+      orderBy: 'name',
+      brands: [],
+      types: []
   }
 }
 
@@ -76,21 +87,27 @@ export const catalogSlice = createSlice({
   name: "catalog",
   initialState: productAdapter.getInitialState<CatalogState>({
     productsLoaded: false,
-    filtersLoaded:false,
+    filtersLoaded: false,
     status: "idle",
-    brands:[],
-    types:[],
-    productParams:initParams()
-    
-    
+    brands: [],
+    types: [],
+    productParams: initParams(),
+    metaData: null,
   }),
   reducers: {
-    setProductParams:(state,action)=>{
+    setProductParams: (state, action) => {
       state.productsLoaded = false;
-      state.productParams = {...state.productParams,...action.payload}
+      state.productParams = { ...state.productParams, ...action.payload,pageNumber:1 };
     },
-    resetProductParams:(state)=>{
-     state.productParams = initParams()
+    setMetaData: (state, action) => {
+      state.metaData = action.payload;
+    },
+    resetProductParams: (state) => {
+      state.productParams = initParams();
+    },
+    setPageNumber:(state,action)=>{
+      state.productsLoaded = false;
+      state.productParams = { ...state.productParams, ...action.payload };
     }
   },
   extraReducers: (builder) => {
@@ -125,10 +142,10 @@ export const catalogSlice = createSlice({
       state.types = action.payload.types;
       state.filtersLoaded = true;
     });
-    builder.addCase(fetchFilters.rejected,(state,action)=>{
-      state.status = 'idle';
-      console.log(action.payload)
-    })
+    builder.addCase(fetchFilters.rejected, (state, action) => {
+      state.status = "idle";
+      console.log(action.payload);
+    });
   },
 });
 
@@ -136,4 +153,5 @@ export const productSelectors = productAdapter.getSelectors(
   (state: RootState) => state.catalog
 );
 
-export const {setProductParams,resetProductParams} = catalogSlice.actions
+export const { setProductParams, resetProductParams, setMetaData,setPageNumber } =
+  catalogSlice.actions;

@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { PaginatedResponse } from "../Models/pagination";
 
 axios.defaults.headers.common = { "X-Requested-With": "XMLHttpRequest" };
 
@@ -14,7 +15,8 @@ const sleep = () => new Promise((resolve) => setTimeout(resolve, 500));
 const responseBody = (response: AxiosResponse) => response.data;
 
 const requests = {
-  get: (url: string,params?:URLSearchParams) => axios.get(url,{params}).then(responseBody),
+  get: (url: string, params?: URLSearchParams) =>
+    axios.get(url, { params }).then(responseBody),
   post: (url: string, body: {}) => axios.post(url, body).then(responseBody),
   put: (url: string, body: {}) => axios.put(url, body).then(responseBody),
   delete: (url: string) => axios.delete(url).then(responseBody),
@@ -27,7 +29,11 @@ type MyErrorResponse = {
 axios.interceptors.response.use(
   async function (response) {
     if (process.env.NODE_ENV === "development") await sleep();
-
+    const pagination = response.headers["pagination"];
+    if (pagination) {
+      response.data = new PaginatedResponse(response.data,JSON.parse(pagination));
+       return response;
+    }
     return response;
   },
   function (error: AxiosError<MyErrorResponse>) {
@@ -112,19 +118,19 @@ axios.interceptors.response.use(
 // );
 
 const Catalog = {
-  list: (params:URLSearchParams) => requests.get("Products",params),
+  list: (params: URLSearchParams) => requests.get("Products", params),
   details: (id: number) => requests.get(`products/${id}`),
-  fetchFilters:()=>requests.get('products/filters')
+  fetchFilters: () => requests.get("products/filters"),
 };
 
 const Basket = {
   get: () => requests.get("basket"),
 
   addItem: (productId: number, quantity = 1) =>
-  requests.post(`basket?productId=${productId}&quantity=${quantity}`, {}),
+    requests.post(`basket?productId=${productId}&quantity=${quantity}`, {}),
 
   deleteItem: (productId: number, quantity = 1) =>
-  requests.delete(`basket?productId=${productId}&quantity=${quantity}`)
+    requests.delete(`basket?productId=${productId}&quantity=${quantity}`),
 };
 const agent = {
   Catalog,
