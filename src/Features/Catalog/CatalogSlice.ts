@@ -68,7 +68,7 @@ export const fetchFilters = createAsyncThunk(
     try {
       return agent.Catalog.fetchFilters();
     } catch (error: any) {
-      return thunkAPI.rejectWithValue({ error: error.data });
+      return thunkAPI.rejectWithValue({ error: error.message });
     }
   }
 );
@@ -140,11 +140,12 @@ export const catalogSlice = createSlice({
     builder.addCase(fetchFilters.fulfilled, (state, action) => {
       state.brands = action.payload.brands;
       state.types = action.payload.types;
+      state.status = 'idle';
       state.filtersLoaded = true;
     });
     builder.addCase(fetchFilters.rejected, (state, action) => {
       state.status = "idle";
-      console.log(action.payload);
+   
     });
   },
 });

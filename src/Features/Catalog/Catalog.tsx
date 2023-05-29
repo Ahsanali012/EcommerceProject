@@ -46,7 +46,7 @@ export default function Catalog() {
     if (!filtersLoaded) dispatch(fetchFilters());
   }, [dispatch, filtersLoaded]);
 
-  if (status.includes("pending")||!metaData)
+  if (!filtersLoaded)
     return <LoadingComponent message="Loading Product" />;
 
   return (
@@ -88,13 +88,15 @@ export default function Catalog() {
       </Grid>
       <Grid item xs={3} />
 
-      <Grid item xs={9} sx={{mb:2}}>
-        <AppPagination
-          metaData={metaData}
-          onPageChange={(page: number) =>
-            dispatch(setPageNumber({ pageNumber: page }))
-          }
-        />
+      <Grid item xs={9} sx={{ mb: 2 }}>
+        {metaData && (
+          <AppPagination
+            metaData={metaData}
+            onPageChange={(page: number) =>
+              dispatch(setPageNumber({ pageNumber: page }))
+            }
+          />
+        )}
       </Grid>
     </Grid>
   );

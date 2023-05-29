@@ -13,8 +13,8 @@ export default function AppPagination({ metaData, onPageChange }: Props) {
         Displaying {(currentPage - 1) * pageSize + 1} -
         {currentPage * pageSize > totalCount
           ? totalCount
-          : currentPage * pageSize}
-        of {totalCount}items
+          : currentPage * pageSize} 
+         {' '} of {totalCount}items
       </Typography>
       <Pagination
         color="secondary"
